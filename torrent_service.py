@@ -1,8 +1,10 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import pexpect
 import subprocess
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all origins
 terminals = {}  # Dictionary to store terminal information by node ID
 
 @app.route('/create_node', methods=['POST'])
