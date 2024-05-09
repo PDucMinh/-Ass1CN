@@ -30,7 +30,9 @@ class Tracker:
                              dest_port=dest_port,
                              data=data)
         encrypted_data = segment.data
-        sock.sendto(encrypted_data, addr)
+        connection = socket.create_connection((ip, dest_port))
+        connection.sendall(encrypted_data)
+        # sock.sendto(encrypted_data, addr)
 
     def add_file_owner(self, msg: dict, addr: tuple):
         entry = {
@@ -146,12 +148,17 @@ class Tracker:
             log(node_id=0, content=log_content, is_tracker=True)
 
     def listen(self):
+        self.tracker_socket.listen(10)
+
         timer_thread = Thread(target=self.check_nodes_periodically, args=(config.constants.TRACKER_TIME_INTERVAL,))
         timer_thread.setDaemon(True)
         timer_thread.start()
 
         while True:
-            data, addr = self.tracker_socket.recvfrom(config.constants.BUFFER_SIZE)
+            # data, addr = self.tracker_socket.recvfrom(config.constants.BUFFER_SIZE)
+            connection, addr = self.tracker_socket.accept()
+            data = connection.recv(config.constants.BUFFER_SIZE)
+
             t = Thread(target=self.handle_node_request, args=(data, addr))
             t.start()
 

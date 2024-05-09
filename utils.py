@@ -16,8 +16,8 @@ def set_socket(port: int) -> socket.socket:
     :param port: port number
     :return: A socket object with an unused port number
     '''
-    sock = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
-    # sock = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
+    # sock = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+    sock = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind(('localhost', port))
     used_ports.append(port)
