@@ -30,23 +30,23 @@ class Node:
         self.is_in_send_mode = False    # is thread uploading a file or not
         self.downloaded_files = {}
 
-    # def send_segment(self, sock: socket.socket, data: bytes, addr: tuple):
-    #     ip, dest_port = addr
-    #     segment = UDPSegment(src_port=sock.getsockname()[1],
-    #                          dest_port=dest_port,
-    #                          data=data)
-    #     encrypted_data = segment.data
-    #     sock.sendto(encrypted_data, addr)
-    def send_segment(self, sock: socket.socket, data: bytes, addr: tuple,):
+    def send_segment(self, sock: socket.socket, data: bytes, addr: tuple):
         ip, dest_port = addr
         segment = UDPSegment(src_port=sock.getsockname()[1],
                              dest_port=dest_port,
                              data=data)
         encrypted_data = segment.data
+        sock.sendto(encrypted_data, addr)
+    # def send_segment(self, sock: socket.socket, data: bytes, addr: tuple,):
+    #     ip, dest_port = addr
+    #     segment = UDPSegment(src_port=sock.getsockname()[1],
+    #                          dest_port=dest_port,
+    #                          data=data)
+    #     encrypted_data = segment.data
         
-        connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        connection = socket.create_connection((ip, dest_port))
-        connection.sendall(encrypted_data)
+    #     connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    #     connection.connect((ip, dest_port))
+    #     connection.sendall(encrypted_data)
 
     def split_file_to_chunks(self, file_path: str, rng: tuple) -> list:
         with open(file_path, "r+b") as f:
@@ -113,18 +113,18 @@ class Node:
                             dest_node_id=msg["src_node_id"],
                             dest_port=addr[1])
 
-    # def listen(self):
-    #     while True:
-    #         data, addr = self.send_socket.recvfrom(config.constants.BUFFER_SIZE)
-    #         msg = Message.decode(data)
-    #         self.handle_requests(msg=msg, addr=addr)
     def listen(self):
-        self.send_socket.listen(100)  # Listen for incoming connections
         while True:
-            conn, addr = self.send_socket.accept()  # Accept a connection
-            data = conn.recv(config.constants.BUFFER_SIZE)  # Receive data
+            data, addr = self.send_socket.recvfrom(config.constants.BUFFER_SIZE)
             msg = Message.decode(data)
             self.handle_requests(msg=msg, addr=addr)
+    # def listen(self):
+    #     self.send_socket.listen(100)  # Listen for incoming connections
+    #     while True:
+    #         conn, addr = self.send_socket.accept()  # Accept a connection
+    #         data = conn.recv(config.constants.BUFFER_SIZE)  # Receive data
+    #         msg = Message.decode(data)
+    #         self.handle_requests(msg=msg, addr=addr)
 
     def set_send_mode(self, filename: str):
         if filename not in self.files:
@@ -156,7 +156,7 @@ class Node:
         temp_sock = set_socket(temp_port)
         dest_node = file_owner[0]
 
-        temp_sock.listen(100)
+        # temp_sock.listen(100)
 
         msg = Node2Node(src_node_id=self.node_id,
                         dest_node_id=dest_node["node_id"],
@@ -165,9 +165,9 @@ class Node:
                           data=msg.encode(),
                           addr=tuple(dest_node["addr"]))
         while True:
-            # data, addr = temp_sock.recvfrom(config.constants.BUFFER_SIZE)
-            connection, addr = temp_sock.accept()
-            data = connection.recv(config.constants.BUFFER_SIZE)
+            data, addr = temp_sock.recvfrom(config.constants.BUFFER_SIZE)
+            # connection, addr = temp_sock.accept()
+            # data = connection.recv(config.constants.BUFFER_SIZE)
 
             dest_node_response = Message.decode(data)
             size = dest_node_response["size"]
@@ -207,12 +207,12 @@ class Node:
         log_content = "I sent a request for a chunk of {0} for node{1}".format(filename, dest_node["node_id"])
         log(node_id=self.node_id, content=log_content)
 
-        temp_sock.listen(100)
+        # temp_sock.listen(100)
 
         while True:
-            # data, addr = temp_sock.recvfrom(config.constants.BUFFER_SIZE)
-            connection, addr = temp_sock.accept()
-            data = connection.recv(config.constants.BUFFER_SIZE)
+            data, addr = temp_sock.recvfrom(config.constants.BUFFER_SIZE)
+            # connection, addr = temp_sock.accept()
+            # data = connection.recv(config.constants.BUFFER_SIZE)
 
             msg = Message.decode(data) # but this is not a simple message, it contains chunk's bytes
             if msg["idx"] == -1: # end of the file
@@ -312,12 +312,12 @@ class Node:
                           data=msg.encode(),
                           addr=tuple(config.constants.TRACKER_ADDR))
         # now we must wait for the tracker response
-        search_sock.listen(100)
+        # search_sock.listen(100)
 
         while True:
-            # data, addr = search_sock.recvfrom(config.constants.BUFFER_SIZE)
-            connection, addr = search_sock.accept()
-            data = connection.recv(config.constants.BUFFER_SIZE)
+            data, addr = search_sock.recvfrom(config.constants.BUFFER_SIZE)
+            # connection, addr = search_sock.accept()
+            # data = connection.recv(config.constants.BUFFER_SIZE)
             
             tracker_msg = Message.decode(data)
             return tracker_msg
