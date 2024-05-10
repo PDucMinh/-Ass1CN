@@ -32,6 +32,7 @@ class Node:
 
     def send_segment(self, sock: socket.socket, data: bytes, addr: tuple):
         ip, dest_port = addr
+        print(ip)
         segment = UDPSegment(src_port=sock.getsockname()[1],
                              dest_port=dest_port,
                              data=data)
@@ -52,7 +53,8 @@ class Node:
             f.flush()
             f.close()
 
-    def send_chunk(self, filename: str, rng: tuple, dest_node_id: int, dest_port: int):
+    def send_chunk(self, filename: str, rng: tuple, dest_node_id: int, dest_port: int, addr:tuple):
+        ip, thisport = addr
         file_path = f"{config.directory.node_files_dir}node{self.node_id}/{filename}"
         chunk_pieces = self.split_file_to_chunks(file_path=file_path,
                                                  rng=rng)
@@ -69,7 +71,7 @@ class Node:
             log(node_id=self.node_id, content=log_content)
             self.send_segment(sock=temp_sock,
                               data=Message.encode(msg),
-                              addr=("localhost", dest_port))
+                              addr=(temp_sock.getsockname, dest_port))
         # now let's tell the neighboring peer that sending has finished (idx = -1)
         msg = ChunkSharing(src_node_id=self.node_id,
                            dest_node_id=dest_node_id,
@@ -77,7 +79,7 @@ class Node:
                            range=rng)
         self.send_segment(sock=temp_sock,
                           data=Message.encode(msg),
-                          addr=("localhost", dest_port))
+                          addr=(ip, dest_port))
 
         log_content = "The process of sending a chunk to node{} of file {} has finished!".format(dest_node_id, filename)
         log(node_id=self.node_id, content=log_content)
@@ -101,7 +103,7 @@ class Node:
             self.send_chunk(filename=msg["filename"],
                             rng=msg["range"],
                             dest_node_id=msg["src_node_id"],
-                            dest_port=addr[1])
+                            dest_port=addr[1], addr=addr)
 
     def listen(self):
         while True:
