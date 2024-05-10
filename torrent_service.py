@@ -4,6 +4,7 @@ import pexpect
 import os
 import subprocess
 import time
+import time
 
 from request.set_mode_request import SetModeRequest
 
@@ -11,6 +12,8 @@ app = Flask(__name__)
 CORS(app)  # Enable CORS for all origins
 terminals = {}  # Dictionary to store terminal information by node ID
 bittorrent_files = []
+NODE_FILES_DIR = 'node_files'
+LOGS_DIR = 'logs'
 NODE_FILES_DIR = 'node_files'
 LOGS_DIR = 'logs'
 
@@ -54,8 +57,10 @@ def set_mode():
     if set_mode_request.mode == 'send':
         command = f'torrent -setMode send {set_mode_request.filename}'
         terminal.sendline(command)  # Send the command
+        terminal.sendline(command)  # Send the command
         if set_mode_request.filename not in bittorrent_files:
             bittorrent_files.append(set_mode_request.filename)  # Save filename if it's not already in the list
+        return jsonify({'message': f'Mode set to {set_mode_request.mode} for {set_mode_request.filename}'})
         return jsonify({'message': f'Mode set to {set_mode_request.mode} for {set_mode_request.filename}'})
     elif set_mode_request.mode == 'download':
         command = f'torrent -setMode download {set_mode_request.filename}'
@@ -73,6 +78,7 @@ def set_mode():
         return jsonify({'message': f'Mode set to {set_mode_request.mode} for {set_mode_request.filename}'})
     elif set_mode_request.mode == 'exit':
         command = 'torrent -setMode exit'
+        terminal.sendline(command)  # Send the command
         terminal.sendline(command)  # Send the command
         del terminals[set_mode_request.node_id]  # Remove terminal entry upon exit
         # Remove log file associated with the node ID
