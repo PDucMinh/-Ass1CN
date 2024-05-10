@@ -1,6 +1,6 @@
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify
 from flask_cors import CORS
-import pexpect
+import wexpect
 import os
 import subprocess
 import time
@@ -21,13 +21,15 @@ def create_node():
     if node_id is None:
         return jsonify({'error': 'Node ID is required'}), 400  # Return an error response
     
+    terminal = wexpect.spawn('cmd.exe')
+    terminal.expect('>')
     command = f'python3 node.py -node_id {node_id}'
-    terminal = pexpect.spawn(f'bash', ['-c', command])
+    terminal.sendline(command)
 
     try:
         # Example: wait for a specific startup message with a timeout
         terminal.expect('Node program started', timeout=10)
-    except pexpect.TIMEOUT:
+    except wexpect.TIMEOUT:
         # Handle expected timeout if the message does not appear
         print("Timeout while waiting for node to confirm startup.")
         terminal.terminate(force=True)  
@@ -87,11 +89,9 @@ def set_mode():
 @app.route('/start_tracker', methods=['POST'])
 def start_tracker():
     command = 'python3 tracker.py'
-    # Construct the command with sudo
-    sudo_gnome_terminal_command = f"sudo gnome-terminal -- bash -c '{command}'"
-
-    # Launch the GNOME Terminal with sudo
-    subprocess.Popen(['bash', '-c', sudo_gnome_terminal_command])
+    terminal = wexpect.spawn('cmd.exe')
+    terminal.expect('>')
+    terminal.sendline(command)
     return jsonify({'message': 'Tracker started successfully'})
 
 
