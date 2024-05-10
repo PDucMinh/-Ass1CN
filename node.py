@@ -71,7 +71,7 @@ class Node:
             log(node_id=self.node_id, content=log_content)
             self.send_segment(sock=temp_sock,
                               data=Message.encode(msg),
-                              addr=(temp_sock.getsockname, dest_port))
+                              addr=(ip, dest_port))
         # now let's tell the neighboring peer that sending has finished (idx = -1)
         msg = ChunkSharing(src_node_id=self.node_id,
                            dest_node_id=dest_node_id,
