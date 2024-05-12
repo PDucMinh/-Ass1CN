@@ -2,7 +2,6 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import wexpect
 import os
-import subprocess
 import time
 
 from request.set_mode_request import SetModeRequest
@@ -13,9 +12,11 @@ terminals = {}  # Dictionary to store terminal information by node ID
 bittorrent_files = []
 NODE_FILES_DIR = 'node_files'
 LOGS_DIR = 'logs'
+current_ip = "localhost"
 
 @app.route('/create_node', methods=['POST'])
 def create_node():
+    global current_ip
     node_id = request.json.get('nodeId')
 
     if node_id is None:
@@ -23,7 +24,7 @@ def create_node():
     
     terminal = wexpect.spawn('cmd.exe')
     terminal.expect('>')
-    command = f'python3 node.py -node_id {node_id}'
+    command = f'python3 node.py -node_id {node_id} -ip_addr {current_ip}'
     terminal.sendline(command)
 
     try:
@@ -93,7 +94,8 @@ def set_mode():
 
 @app.route('/start_tracker', methods=['POST'])
 def start_tracker():
-    command = 'python3 tracker.py'
+    global current_ip
+    command = f'python3 tracker.py -ip_addr {current_ip}'
     terminal = wexpect.spawn('cmd.exe')
     terminal.expect('>')
     terminal.sendline(command)
@@ -108,6 +110,24 @@ def start_tracker():
         return jsonify({'error': 'Failed to start tracker or no confirmation received'})
     
     return jsonify({'message': 'Tracker started successfully'})
+
+
+@app.route('/set_ip', methods=['POST'])
+def set_ip():
+    global current_ip  # Declare that you will use the global variable in this function
+    ip_addr = request.json.get('ip')
+    if ip_addr is None:
+        return jsonify({'error': 'IP address is required'}), 400  # Return an error response
+    current_ip = ip_addr  # Modify the global variable
+    return jsonify({'message': f'IP address set to {current_ip}'}), 200  # Return a success response
+
+
+@app.route('/get_ip', methods=['GET'])
+def get_ip():
+    global current_ip  # Declare that you will use the global variable in this function
+    if current_ip is None:
+        return jsonify({'error': 'Current IP address is none'}), 400  # Return an error response
+    return jsonify({ 'ip': current_ip }), 200
 
 
 @app.route('/get_nodes', methods=['GET'])
