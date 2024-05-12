@@ -54,6 +54,11 @@ def set_mode():
     terminal = terminals[set_mode_request.node_id]
 
     if set_mode_request.mode == 'send':
+        # Check if the file exists
+        file_path = os.path.join(NODE_FILES_DIR, f'node{set_mode_request.node_id}', set_mode_request.filename)
+        if not os.path.isfile(file_path):
+            return jsonify({'error': 'File does not exist'}), 404
+        
         command = f'torrent -setMode send {set_mode_request.filename}'
         terminal.sendline(command)  # Send the command
         if set_mode_request.filename not in bittorrent_files:
@@ -92,6 +97,16 @@ def start_tracker():
     terminal = wexpect.spawn('cmd.exe')
     terminal.expect('>')
     terminal.sendline(command)
+
+    try:
+        # Example: wait for a specific startup message with a timeout
+        terminal.expect('Tracker program started', timeout=10)
+    except wexpect.TIMEOUT:
+        # Handle expected timeout if the message does not appear
+        print("Timeout while waiting for tracker to confirm startup.")
+        terminal.terminate(force=True)  
+        return jsonify({'error': 'Failed to start tracker or no confirmation received'})
+    
     return jsonify({'message': 'Tracker started successfully'})
 
 

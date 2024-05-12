@@ -112,6 +112,7 @@ class Node:
             self.handle_requests(msg=msg, addr=addr)
 
     def set_send_mode(self, filename: str):
+        self.files = self.fetch_owned_files() # re-fetch to get updated files
         if filename not in self.files:
             log(node_id=self.node_id,
                 content=f"You don't have {filename}")
