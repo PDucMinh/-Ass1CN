@@ -1,8 +1,9 @@
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify
 from flask_cors import CORS
-import pexpect
+import wexpect
 import os
 import subprocess
+import time
 
 from request.set_mode_request import SetModeRequest
 
@@ -10,6 +11,8 @@ app = Flask(__name__)
 CORS(app)  # Enable CORS for all origins
 terminals = {}  # Dictionary to store terminal information by node ID
 bittorrent_files = []
+NODE_FILES_DIR = 'node_files'
+LOGS_DIR = 'logs'
 
 @app.route('/create_node', methods=['POST'])
 def create_node():
@@ -18,13 +21,15 @@ def create_node():
     if node_id is None:
         return jsonify({'error': 'Node ID is required'}), 400  # Return an error response
     
+    terminal = wexpect.spawn('cmd.exe')
+    terminal.expect('>')
     command = f'python3 node.py -node_id {node_id}'
-    terminal = pexpect.spawn(f'bash', ['-c', command])
+    terminal.sendline(command)
 
     try:
         # Example: wait for a specific startup message with a timeout
         terminal.expect('Node program started', timeout=10)
-    except pexpect.TIMEOUT:
+    except wexpect.TIMEOUT:
         # Handle expected timeout if the message does not appear
         print("Timeout while waiting for node to confirm startup.")
         terminal.terminate(force=True)  
@@ -48,15 +53,34 @@ def set_mode():
 
     terminal = terminals[set_mode_request.node_id]
 
-    command = ""
     if set_mode_request.mode == 'send':
+        # Check if the file exists
+        file_path = os.path.join(NODE_FILES_DIR, f'node{set_mode_request.node_id}', set_mode_request.filename)
+        if not os.path.isfile(file_path):
+            return jsonify({'error': 'File does not exist'}), 404
+        
         command = f'torrent -setMode send {set_mode_request.filename}'
+        terminal.sendline(command)  # Send the command
         if set_mode_request.filename not in bittorrent_files:
             bittorrent_files.append(set_mode_request.filename)  # Save filename if it's not already in the list
+        return jsonify({'message': f'Mode set to {set_mode_request.mode} for {set_mode_request.filename}'})
     elif set_mode_request.mode == 'download':
         command = f'torrent -setMode download {set_mode_request.filename}'
+        terminal.sendline(command)  # Send the command
+        # Wait for the file to be downloaded
+        download_path = os.path.join(NODE_FILES_DIR, f'node{set_mode_request.node_id}', set_mode_request.filename)
+        max_wait_time = 20  # Maximum wait time in seconds
+        wait_interval = 2  # Check interval in seconds
+        waited_time = 0
+        while not os.path.exists(download_path):
+            time.sleep(wait_interval)
+            waited_time += wait_interval
+            if waited_time >= max_wait_time:
+                return jsonify({'error': 'File download timeout exceeded'}), 500
+        return jsonify({'message': f'Mode set to {set_mode_request.mode} for {set_mode_request.filename}'})
     elif set_mode_request.mode == 'exit':
         command = 'torrent -setMode exit'
+        terminal.sendline(command)  # Send the command
         del terminals[set_mode_request.node_id]  # Remove terminal entry upon exit
         # Remove log file associated with the node ID
         log_file_path = f'logs/node{set_mode_request.node_id}.log'
@@ -66,22 +90,24 @@ def set_mode():
     else:
         return jsonify({'error': f'Invalid mode: {set_mode_request.mode}'}), 400
 
-    terminal.sendline(command)  # Send the command
-    return jsonify({'message': f'Mode set to {set_mode_request.mode} for {set_mode_request.filename}'})
-
 
 @app.route('/start_tracker', methods=['POST'])
 def start_tracker():
     command = 'python3 tracker.py'
-    # Construct the command with sudo
-    sudo_gnome_terminal_command = f"sudo gnome-terminal -- bash -c '{command}'"
+    terminal = wexpect.spawn('cmd.exe')
+    terminal.expect('>')
+    terminal.sendline(command)
 
-    # Launch the GNOME Terminal with sudo
-    subprocess.Popen(['bash', '-c', sudo_gnome_terminal_command])
+    try:
+        # Example: wait for a specific startup message with a timeout
+        terminal.expect('Tracker program started', timeout=10)
+    except wexpect.TIMEOUT:
+        # Handle expected timeout if the message does not appear
+        print("Timeout while waiting for tracker to confirm startup.")
+        terminal.terminate(force=True)  
+        return jsonify({'error': 'Failed to start tracker or no confirmation received'})
+    
     return jsonify({'message': 'Tracker started successfully'})
-
-
-NODE_FILES_DIR = 'node_files'
 
 
 @app.route('/get_nodes', methods=['GET'])
@@ -126,12 +152,23 @@ def upload_file():
     os.makedirs(node_dir, exist_ok=True)
 
     # Save the file to the node's directory
-    file.save(os.path.join(node_dir, file.filename))
+    file_path = os.path.join(node_dir, file.filename)
+    file.save(file_path)
 
-    return jsonify({'message': f'File uploaded successfully to Node {node_id}'})
+    max_wait_time = 20  # Maximum wait time in seconds
+    wait_interval = 2  # Check interval in seconds
+    waited_time = 0
+    while not os.path.exists(file_path):
+            time.sleep(wait_interval)
+            waited_time += wait_interval
+            if waited_time >= max_wait_time:
+                return jsonify({'error': 'File download timeout exceeded'}), 500
 
-
-LOGS_DIR = 'logs'
+    # Check if file was saved successfully
+    if os.path.exists(file_path):
+        return jsonify({'message': f'File uploaded successfully to Node {node_id}'}), 200
+    else:
+        return jsonify({'error': 'Failed to upload file'}), 500
 
 
 @app.route('/get_log', methods=['POST'])
