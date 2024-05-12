@@ -9,20 +9,22 @@ config = Config.from_json(CFG)
 # global variables
 used_ports = []
 
-def set_socket(port: int) -> socket.socket:
+
+def set_socket(port: int, ip: str = 'localhost') -> socket.socket:
     '''
     This function creates a new UDP socket
 
     :param port: port number
+    :param ip: IP address (default is 'localhost')
     :return: A socket object with an unused port number
     '''
     sock = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
-    # sock = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    sock.bind(('localhost', port))
+    sock.bind((ip, port))
     used_ports.append(port)
 
     return sock
+
 
 def free_socket(sock: socket.socket):
     '''

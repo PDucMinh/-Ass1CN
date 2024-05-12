@@ -4,6 +4,7 @@ from collections import defaultdict
 import json
 import datetime
 import time
+import argparse
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -18,8 +19,10 @@ config = Config.from_json(CFG)
 next_call = time.time()
 
 class Tracker:
-    def __init__(self):
-        self.tracker_socket = set_socket(config.constants.TRACKER_ADDR[1])
+    def __init__(self, ip: str):
+        self.ip = ip
+        config.constants.TRACKER_ADDR = (ip, config.constants.TRACKER_ADDR[1]) # update IP address
+        self.tracker_socket = set_socket(config.constants.TRACKER_ADDR[1], ip)
         self.file_owners_list = defaultdict(list)
         self.send_freq_list = defaultdict(int)
         self.has_informed_tracker = defaultdict(bool)
@@ -173,5 +176,10 @@ class Tracker:
         t.join()
 
 if __name__ == '__main__':
-    t = Tracker()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-ip_addr', type=str, help='IP address of the tracker')
+    args = parser.parse_args()
+
+    ip_address = args.ip_addr if args.ip_addr else 'localhost'
+    t = Tracker(ip=ip_address)
     t.run()
