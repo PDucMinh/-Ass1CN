@@ -22,10 +22,11 @@ from segment import UDPSegment
 next_call = time.time()
 
 class Node:
-    def __init__(self, node_id: int, rcv_port: int, send_port: int):
+    def __init__(self, node_id: int, rcv_port: int, send_port: int, ip: str):
+        self.ip = ip
         self.node_id = node_id
-        self.rcv_socket = set_socket(rcv_port)
-        self.send_socket = set_socket(send_port)
+        self.rcv_socket = set_socket(rcv_port, ip)
+        self.send_socket = set_socket(send_port, ip)
         self.files = self.fetch_owned_files()
         self.is_in_send_mode = False    # is thread uploading a file or not
         self.downloaded_files = {}
@@ -59,7 +60,7 @@ class Node:
         chunk_pieces = self.split_file_to_chunks(file_path=file_path,
                                                  rng=rng)
         temp_port = generate_random_port()
-        temp_sock = set_socket(temp_port)
+        temp_sock = set_socket(temp_port, self.ip)
         for idx, p in enumerate(chunk_pieces):
             msg = ChunkSharing(src_node_id=self.node_id,
                                dest_node_id=dest_node_id,
@@ -139,7 +140,7 @@ class Node:
 
     def ask_file_size(self, filename: str, file_owner: tuple) -> int:
         temp_port = generate_random_port()
-        temp_sock = set_socket(temp_port)
+        temp_sock = set_socket(temp_port, self.ip)
         dest_node = file_owner[0]
 
         msg = Node2Node(src_node_id=self.node_id,
@@ -165,7 +166,7 @@ class Node:
                         filename=filename,
                         size=file_size)
         temp_port = generate_random_port()
-        temp_sock = set_socket(temp_port)
+        temp_sock = set_socket(temp_port, self.ip)
         self.send_segment(sock=temp_sock,
                           data=response_msg.encode(),
                           addr=addr)
@@ -181,7 +182,7 @@ class Node:
                            filename=filename,
                            range=range)
         temp_port = generate_random_port()
-        temp_sock = set_socket(temp_port)
+        temp_sock = set_socket(temp_port, self.ip)
         self.send_segment(sock=temp_sock,
                           data=msg.encode(),
                           addr=tuple(dest_node["addr"]))
@@ -283,7 +284,7 @@ class Node:
                            mode=config.tracker_requests_mode.NEED,
                            filename=filename)
         temp_port = generate_random_port()
-        search_sock = set_socket(temp_port)
+        search_sock = set_socket(temp_port, self.ip)
         self.send_segment(sock=search_sock,
                           data=msg.encode(),
                           addr=tuple(config.constants.TRACKER_ADDR))
@@ -346,9 +347,11 @@ class Node:
         Timer(next_call - time.time(), self.inform_tracker_periodically, args=(interval,)).start()
 
 def run(args):
+    ip_address = args.ip_addr if args.ip_addr else 'localhost'
     node = Node(node_id=args.node_id,
                 rcv_port=generate_random_port(),
-                send_port=generate_random_port())
+                send_port=generate_random_port(), 
+                ip=ip_address)
     log_content = f"***************** Node program started just right now! *****************"
     log(node_id=node.node_id, content=log_content)
     node.enter_torrent()
@@ -380,6 +383,7 @@ def run(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-node_id', type=int,  help='id of the node you want to create')
+    parser.add_argument('-ip_addr', type=str, help='IP address of the node')
     node_args = parser.parse_args()
 
     # run the node
