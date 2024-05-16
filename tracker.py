@@ -12,7 +12,7 @@ warnings.filterwarnings("ignore")
 from utils import *
 from messages.message import  Message
 from messages.tracker2node import Tracker2Node
-from segment import UDPSegment
+from segment import TCPSegment
 from configs import CFG, Config
 config = Config.from_json(CFG)
 
@@ -29,7 +29,7 @@ class Tracker:
 
     def send_segment(self, sock: socket.socket, data: bytes, addr: tuple,):
         ip, dest_port = addr
-        segment = UDPSegment(src_port=sock.getsockname()[1],
+        segment = TCPSegment(src_port=sock.getsockname()[1],
                              dest_port=dest_port,
                              data=data)
         encrypted_data = segment.data

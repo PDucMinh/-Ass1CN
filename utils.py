@@ -12,7 +12,7 @@ used_ports = []
 
 def set_socket(port: int, ip: str = 'localhost') -> socket.socket:
     '''
-    This function creates a new UDP socket
+    This function creates a new TCP socket
 
     :param port: port number
     :param ip: IP address (default is 'localhost')
